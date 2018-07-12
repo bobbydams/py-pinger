@@ -1,0 +1,14 @@
+{
+   "status":"error",
+   "reason":"There was an error",
+   "lastrun":"2018-06-28T11:37:48Z",
+   "frequency":10,
+   "sleep":[
+      {
+         "start":"22:00:00",
+         "duration":450
+      }
+   ],
+   "process":"My Process",
+   "server":"My Server"
+}

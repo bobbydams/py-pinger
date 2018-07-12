@@ -1,0 +1,4 @@
+.env
+pinger.log
+pinger.ini
+.pytest_cache/

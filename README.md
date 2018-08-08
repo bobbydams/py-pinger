@@ -8,7 +8,7 @@ Py Pinger expects a JSON body returned from the task endpoint with certain value
 
 ## Ini File
 
-To setup the pinger, copy the pinger_tempalte.ini to pinger.ini and adjust the settings to match your
+To setup the pinger, copy the pinger_template.ini to pinger.ini and adjust the settings to match your
 configuration requirements. If you are not using a certain external service such as HipChat, Slack or Sentry, remove these blocks from the configuration. If you prefer not to send notifications to any services, you can set the `only_log` to `true`. This will prevent any messages from being sent externally.
 
 The urls to monitor should be provided in a comma separated list in the `prod` property. For testing, if `debug` is set to true, the `dev` urls will be used instead. If your backend uses authentication tokens, this can be provided with the `auth_token` setting.

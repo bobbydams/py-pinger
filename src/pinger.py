@@ -11,7 +11,7 @@ import signal
 import os
 
 from utils import (get_settings, get_now, debug_mode, sigterm_handler,
-                   send_messages, get_logger, setup_sentry)
+                   send_messages, get_logger, setup_sentry, request_token)
 
 
 from flask import Flask, jsonify
@@ -46,8 +46,14 @@ def worker(url):
         STATS[url]['pings'] = STATS[url]['pings'] + 1
         try:
             req = Request(url)
-            if settings['urls'].get('auth_token'):
-                req.add_header('Authorization', settings['urls']['auth_token'])
+            if settings.get('token_auth'):
+                auth_token = ''
+                try:
+                    auth_token = request_token()
+                except Exception as e:
+                    log.error(e)
+                header = settings['token_auth'].get('header')
+                req.add_header(header, auth_token)
             with urlopen(req) as fp:
                 now = get_now()
                 sleeping = False
@@ -63,7 +69,7 @@ def worker(url):
                     status = loads(line)
                 except Exception as e:
                     send_messages('Error: Could not parse response from'
-                                 ' endpoint {}'.format(url))
+                                  ' endpoint {}'.format(url))
                     updateStats(url, 'error')
 
                 if status:
@@ -133,8 +139,8 @@ def worker(url):
                             updateStats(url, 'error', process=process, server=server)
                             status_date = None
                             send_messages('Error: Date Parse {} error for endpoint'
-                                         ' {}'.format(status.get('lastrun', None),
-                                                      url))
+                                          ' {}'.format(status.get('lastrun', None),
+                                                       url))
                         if status_date and not (now - margin <= status_date <= now + margin):
                             # This is a failure, report it
                             # If it's outside of the desired range or there is
@@ -192,8 +198,8 @@ def worker(url):
 
         if STATS[url]['status'] == 'error':
             # Use the longer interval so as not to spam people with errors
-            log.warn('Sleeping {} for {} seconds'.format(url,
-                                                         ERRINTERVAL))
+            log.warning('Sleeping {} for {} seconds'.format(url,
+                                                            ERRINTERVAL))
             gevent.sleep(ERRINTERVAL)
         else:
             if DEBUG:

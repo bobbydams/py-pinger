@@ -1,6 +1,6 @@
 import configparser
 from os import path
-from json import dumps
+from json import dumps, loads
 import datetime
 from pytz import UTC
 from urllib.request import urlopen, Request
@@ -138,3 +138,18 @@ def get_settings(config_file=None):
     else:
         config.read(config_file)
     return dict(config._sections)
+
+
+def request_token():
+    settings = get_settings()
+    username = settings['token_auth']['username']
+    password = settings['token_auth']['password']
+    url = settings['token_auth']['url']
+
+    data = {'email': username, 'password': password}
+
+    req = Request(url, data=dumps(data).encode())
+    req.add_header('Content-Type', 'application/json')
+
+    with urlopen(req) as response:
+        return loads(response.read())['auth_token']

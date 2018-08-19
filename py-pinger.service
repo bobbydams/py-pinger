@@ -1,0 +1,13 @@
+[Unit]
+Description=Python Pinger Task Checker Service
+After=network.target
+
+[Service]
+User=root
+ExecStart=/opt/py-pinger/.env/bin/python /opt/py-pinger/src/pinger.py
+WorkingDirectory=/opt/py-pinger/
+Restart=on-failure
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

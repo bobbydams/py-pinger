@@ -104,22 +104,26 @@ greeting=Hello World!
 # Check Interval in seconds
 interval=60
 error_interval=480
+
 # Optional Hipchat Integration
 [hipchat]
 room=
 auth=
 emoji=(yey)
-# Optional Hipchat Integration
+
+# Optional Slack Integration
 [slack]
 url=https://slack.com/api/chat.postMessage
 channel=application-status
 token=<Insert Slack API Token>
 user=My Task Checker Bot
 emoji=:robot:
+
 # Optional Hipchat Integration
 [sentry]
 url=<API URL provided by Sentry>
 # Optional token auth if your backend supports that
+
 [token_auth]
 # The endpoint to authenticate against
 username=my-user
@@ -127,10 +131,12 @@ password=my-secret-password
 url=https://my-backend.com/login
 # The header to use when sending the auth token
 header=Authorization
+
 [urls]
-# Live URLs
+# Live URLs, when debug is set to false
 prod=https://my-backend.com/task1,https://my-backend.com/task2,https://my-backend.com/task3
-# URLs for testing
+
+# URLs for testing, when debug is set to true
 dev=
 ```
 
@@ -166,6 +172,17 @@ To ensure that the service will startup whent the system startups up, continue w
 
 If hosting on a recent version of Ubuntu/Debian with Systemd, a service file is available for convenience.
 Place this file at `/etc/systemd/system/py-pinger.service`. Adjust the `ExecStart` command to your setup.
+
+```
+# Start Service
+systemctl start py-pinger.service
+
+# Stop Service
+systemctl stop py-pinger.service
+
+# Service Status
+systemctl status py-pinger.service
+```
 
 ## Nginx Installation & Setup
 

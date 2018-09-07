@@ -6,7 +6,6 @@ from pytz import UTC
 from urllib.request import urlopen, Request
 import logging
 
-from raven import Client
 
 
 SENTRY_CLIENT = None
@@ -26,6 +25,7 @@ log = get_logger()
 
 
 def setup_sentry():
+    from raven import Client
     global SENTRY_CLIENT
     settings = get_settings()
     if settings.get('sentry'):

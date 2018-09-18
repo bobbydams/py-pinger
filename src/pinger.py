@@ -49,7 +49,7 @@ def worker(url):
             if settings.get('token_auth'):
                 auth_token = ''
                 try:
-                    auth_token = request_token()
+                    auth_token = request_token(url)
                 except Exception as e:
                     log.error(e)
                 header = settings['token_auth'].get('header')

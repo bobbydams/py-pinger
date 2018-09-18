@@ -4,6 +4,7 @@ from json import dumps, loads
 import datetime
 from pytz import UTC
 from urllib.request import urlopen, Request
+from urllib.parse import urlparse
 import logging
 
 from raven import Client
@@ -140,16 +141,25 @@ def get_settings(config_file=None):
     return dict(config._sections)
 
 
-def request_token():
+def request_token(for_url=None):
     settings = get_settings()
     username = settings['token_auth']['username']
     password = settings['token_auth']['password']
-    url = settings['token_auth']['url']
+    auth_url = settings['token_auth']['url']
+    
+    if not auth_url.startswith("http://") and not auth_url.startswith("https://"):
+        # auth_url represents a relative path, to be used on the domain
+        # of the url that needs pinging.
+        parsed_url = urlparse(for_url)
+        if not auth_url.startswith("/"):
+            auth_url = "/" + auth_url
+        auth_url = parsed_url.scheme + "://" + parsed_url.netloc + auth_url
 
     data = {'email': username, 'password': password}
 
-    req = Request(url, data=dumps(data).encode())
+    req = Request(auth_url, data=dumps(data).encode())
     req.add_header('Content-Type', 'application/json')
 
     with urlopen(req) as response:
-        return loads(response.read())['auth_token']
+        token = loads(response.read())['auth_token']
+        return token

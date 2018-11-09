@@ -47,11 +47,12 @@ def worker(url):
         try:
             req = Request(url)
             if settings.get('token_auth'):
-                auth_token = ''
-                try:
-                    auth_token = request_token()
-                except Exception as e:
-                    log.error(e)
+                auth_token = settings['token_auth'].get('token', '')
+                if not auth_token and settings['token_auth'].get('url'):
+                    try:
+                        auth_token = request_token()
+                    except Exception as e:
+                        log.error(e)
                 header = settings['token_auth'].get('header')
                 req.add_header(header, auth_token)
             with urlopen(req) as fp:

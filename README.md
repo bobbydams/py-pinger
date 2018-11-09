@@ -15,7 +15,7 @@ The urls to monitor should be provided in a comma separated list in the `prod` p
 
 ## Authentication
 
-If your backend uses authentication tokens, this can be provided with the `token_auth` settings.
+If your backend uses authentication tokens, this can be provided with the `token_auth` settings. Either set the `token` attribute with a static token, or use the `url`, `username` and `password` settings to ask for a user token through your API.
 
 ## Web Server
 

@@ -7,7 +7,6 @@ from urllib.request import urlopen, Request
 from urllib.parse import urlparse
 import logging
 
-from raven import Client
 
 
 SENTRY_CLIENT = None
@@ -27,6 +26,7 @@ log = get_logger()
 
 
 def setup_sentry():
+    from raven import Client
     global SENTRY_CLIENT
     settings = get_settings()
     if settings.get('sentry'):

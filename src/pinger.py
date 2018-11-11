@@ -47,11 +47,12 @@ def worker(url):
         try:
             req = Request(url)
             if settings.get('token_auth'):
-                auth_token = ''
-                try:
-                    auth_token = request_token(url)
-                except Exception as e:
-                    log.error(e)
+                auth_token = settings['token_auth'].get('token', '')
+                if not auth_token and settings['token_auth'].get('url'):
+                    try:
+                        auth_token = request_token(url)
+                    except Exception as e:
+                        log.error(e)
                 header = settings['token_auth'].get('header')
                 req.add_header(header, auth_token)
             with urlopen(req) as fp:
@@ -142,38 +143,41 @@ def worker(url):
                                           ' {}'.format(status.get('lastrun', None),
                                                        url))
                         if status_date and not (now - margin <= status_date <= now + margin):
-                            # This is a failure, report it
-                            # If it's outside of the desired range or there is
-                            # a process error, report it!
-                            if status_msg == 'OK':
-                                message = 'Error: {}/{} is outside of the acceptable {} ' \
-                                          'minute range. Last Run {} UTC' \
-                                    .format(process,
-                                            server,
-                                            frequency,
-                                            status_date)
-                            else:
-                                message = 'Error: Failure reported on process {} running' \
-                                          ' on {}. Status: {} Error: {}.' \
-                                    .format(process, server, status_msg, reason)
+                            # This is a failure due to the age of the last status, report it.
+                            # Also report the last known status, for good information.
+                            message = 'Error: {}/{} is outside of the acceptable {} ' \
+                                      'minute range. Last Run {} UTC with status {}' \
+                                .format(process,
+                                        server,
+                                        frequency,
+                                        status_date,
+                                        status_msg)
                             updateStats(url, 'error', process=process, server=server)
                             send_messages(message)
                         elif status_date and (now - margin <= status_date <= now + margin):
-                            # Everything is okay, but check if the last check
-                            # was a failure
-                            if STATS[url]['status'] == 'error':
-                                message = 'Status: {}/{} ({}) is OK again!'\
-                                    .format(process,
-                                            server,
-                                            url)
+                            if status_msg != 'OK':
+                                message = 'Error: Failure reported on process {} running' \
+                                          ' on {}. Status: {} Error: {}.' \
+                                    .format(process, server, status_msg, reason)
+                                updateStats(url, 'error', process=process, server=server)
                                 send_messages(message)
-                            updateStats(url, 'ok', process=process, server=server)
+                            else:
+                                # Everything is okay, but check if the last check
+                                # was a failure
+                                if STATS[url]['status'] == 'error':
+                                    message = 'Status: {}/{} ({}) is OK again!'\
+                                        .format(process,
+                                                server,
+                                                url)
+                                    send_messages(message)
+                                updateStats(url, 'ok', process=process, server=server)
                         else:
                             # Something is wrong if no status_date exists
                             message = 'Error: {}/{} is not configured properly {} '\
                                 .format(process, server, url)
                             updateStats(url, 'error', process=process, server=server)
                             send_messages(message)
+                        
 
         except URLError as e:
             # If we receive an URL error, report it as an error

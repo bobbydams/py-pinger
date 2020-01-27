@@ -7,7 +7,6 @@ from urllib.request import urlopen, Request
 import logging
 
 
-
 SENTRY_CLIENT = None
 
 
@@ -26,6 +25,7 @@ log = get_logger()
 
 def setup_sentry():
     from raven import Client
+
     global SENTRY_CLIENT
     settings = get_settings()
     if settings.get('sentry'):
@@ -72,16 +72,21 @@ def send_to_hipchat(message, color='green', meme='(yey)', notify=True):
     settings = get_settings()
     HIPCHATAUTH = settings['hipchat']['auth']
     HIPCHATROOM = settings['hipchat']['room']
-    HIPCHATURL = 'https://api.hipchat.com/v2/room/{}/notification?auth_token={}'.format(HIPCHATROOM,
-                                                                                        HIPCHATAUTH)
+    HIPCHATURL = 'https://api.hipchat.com/v2/room/{}/notification?auth_token={}'.format(
+        HIPCHATROOM, HIPCHATAUTH
+    )
     if not meme:
         meme = settings['hipchat']['emoji']
 
     if only_log():
         try:
             req = Request(HIPCHATURL)
-            data = {"color": color, "message": "{} {}".format(message, meme),
-                    "notify": notify, "message_format": "text"}
+            data = {
+                "color": color,
+                "message": "{} {}".format(message, meme),
+                "notify": notify,
+                "message_format": "text",
+            }
             data = dumps(data)
             req.add_header('Content-Type', 'application/json')
             with urlopen(req, data, timeout=20) as f:
@@ -90,10 +95,11 @@ def send_to_hipchat(message, color='green', meme='(yey)', notify=True):
             log.error('Error sending to Hipchat!')
             log.exception(e)
     else:
-        log.debug('---- DEBUG HipChat! Message {} {} {} {} ----'.format(message,
-                                                                        meme,
-                                                                        color,
-                                                                        notify))
+        log.debug(
+            '---- DEBUG HipChat! Message {} {} {} {} ----'.format(
+                message, meme, color, notify
+            )
+        )
 
 
 def send_to_slack(message, meme=':robot:', send_messages=True):
@@ -110,12 +116,16 @@ def send_to_slack(message, meme=':robot:', send_messages=True):
         try:
             req = Request(SLACKURL)
             req.add_header('Content-Type', 'application/json; charset=utf-8')
-            req.data = dumps({'token': SLACKTOKEN,
-                              'channel': SLACKCHANNEL,
-                              'as_user': True,
-                              'icon_emoji': meme,
-                              'username': SLACKUSER,
-                              'text': message}).encode('utf-8')
+            req.data = dumps(
+                {
+                    'token': SLACKTOKEN,
+                    'channel': SLACKCHANNEL,
+                    'as_user': True,
+                    'icon_emoji': meme,
+                    'username': SLACKUSER,
+                    'text': message,
+                }
+            ).encode('utf-8')
             with urlopen(req, timeout=20) as f:
                 log.info('---- Notified Slack! {} ----'.format(message))
         except Exception as e:

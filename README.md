@@ -3,8 +3,8 @@
 ## Overview
 
 This package is a monitoring tool which can be used to monitor various task endpoints
-via HTTP(S) and report to Sentry, HipChat or Slack when a task is  out of acceptable bounds.
-Py Pinger expects a JSON body returned from the task endpoint with certain values  (see below).
+via HTTP(S) and report to Sentry, HipChat or Slack when a task is out of acceptable bounds.
+Py Pinger expects a JSON body returned from the task endpoint with certain values (see below).
 
 ## Ini File
 
@@ -34,15 +34,15 @@ The /task path will provide information on a particular URL. If the task is heal
 
 The task endpoint should return the following JSON body in its response
 
-* status - a status message. Should be "ok" or "error"
-* reason - optional reason why the task is failed
-* lastrun - required UTC date of the last time the task ran
-* frequency - the time in minutes that the task should run. Example: 60 if the task should run
-once per hour
-* sleep - an optional array of objects with a start and duration. Use this if there are set periods
-of time that the task is not running.
-* process - an optional tag to identify the task
-* server - an optional tag to identify which server a process is being executed on
+- status - a status message. Should be "ok" or "error"
+- reason - optional reason why the task is failed
+- lastrun - required UTC date of the last time the task ran
+- frequency - the time in minutes that the task should run. Example: 60 if the task should run
+  once per hour
+- sleep - an optional array of objects with a start and duration. Use this if there are set periods
+  of time that the task is not running.
+- process - an optional tag to identify the task
+- server - an optional tag to identify which server a process is being executed on
 
 ```
 {
@@ -67,8 +67,8 @@ Note: This was written for Debian/Ubuntu, but can probably be adjusted to work w
 
 Prerequisites:
 
-* Nginx (Or your favourite web server)
-* Letsencrypt (optional if you want to host over HTTPS)
+- Nginx (Or your favourite web server)
+- Letsencrypt (optional if you want to host over HTTPS)
 
 ## Installation of py-pinger
 
@@ -124,6 +124,7 @@ emoji=:robot:
 url=<API URL provided by Sentry>
 # Optional token auth if your backend supports that
 
+# Optional auth endpoint
 [token_auth]
 # The endpoint to authenticate against
 username=my-user
@@ -156,6 +157,7 @@ Install the dependencies in `requirements.txt`
 ```
 pip install -r requirements.txt
 ```
+
 ### Startup
 
 At this point you can start the process directly to check that it's setup properly.

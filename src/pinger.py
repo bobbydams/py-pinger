@@ -10,13 +10,22 @@ from urllib.request import urlopen, Request
 import signal
 import os
 
-from utils import (get_settings, get_now, debug_mode, sigterm_handler,
-                   send_messages, get_logger, setup_sentry, request_token)
+from utils import (
+    get_settings,
+    get_now,
+    debug_mode,
+    sigterm_handler,
+    send_messages,
+    get_logger,
+    setup_sentry,
+    request_token,
+)
 
 
 from flask import Flask, jsonify
 import gevent
 import gevent.monkey
+
 gevent.monkey.patch_all()
 
 log = get_logger()
@@ -32,29 +41,14 @@ def worker(url):
     ERRINTERVAL = int(settings['main']['error_interval'])
 
     while 1:
-        # Store stats per URL
-        if not STATS.get(url):
-            STATS[url] = {'pings': 0,
-                          'errors': 0,
-                          'status': '',
-                          'sleep_start': None,
-                          'sleep_end': None,
-                          'server': None,
-                          'process': None}
-        log.info('{}: Pinging {}'.format(datetime.datetime.utcnow(),
-                                         url))
-        STATS[url]['pings'] = STATS[url]['pings'] + 1
+        # Create a stats dict per url
+        create_stats_per_url(url)
         try:
             req = Request(url)
-            if settings.get('token_auth'):
-                auth_token = settings['token_auth'].get('token', '')
-                if not auth_token and settings['token_auth'].get('url'):
-                    try:
-                        auth_token = request_token()
-                    except Exception as e:
-                        log.error(e)
-                header = settings['token_auth'].get('header')
-                req.add_header(header, auth_token)
+            # Set an auth token header if necessary
+            set_token_auth(req)
+
+            # Begin checking the endpoints
             with urlopen(req) as fp:
                 now = get_now()
                 sleeping = False
@@ -63,15 +57,17 @@ def worker(url):
                 message = ''
                 line = fp.read()
                 if DEBUG:
-                    log.debug('{}: Received response from {}: {}'.format(now,
-                                                                         url,
-                                                                         line))
+                    log.debug(
+                        '{}: Received response from {}: {}'.format(now, url, line)
+                    )
                 try:
                     status = loads(line)
                 except Exception as e:
-                    send_messages('Error: Could not parse response from'
-                                  ' endpoint {}'.format(url))
-                    updateStats(url, 'error')
+                    send_messages(
+                        'Error: Could not parse response from'
+                        ' endpoint {}'.format(url)
+                    )
+                    update_stats(url, 'error')
 
                 if status:
                     if STATS[url]['status'] == 'sleeping':
@@ -79,19 +75,15 @@ def worker(url):
                         start = STATS[url]['sleep_start']
                         end = STATS[url]['sleep_end']
                         if DEBUG:
-                            log.debug('{} <= {} <= {}'.format(start,
-                                                              now,
-                                                              end))
-                        if (start <= now <= end):
-                            log.info('{}: {} is still asleep! zzzzzz'.format(now,
-                                                                             url))
+                            log.debug('{} <= {} <= {}'.format(start, now, end))
+                        if start <= now <= end:
+                            log.info('{}: {} is still asleep! zzzzzz'.format(now, url))
                         else:
                             # Wake Up!
-                            updateStats(url, 'ok', None, None)
+                            update_stats(url, 'ok', None, None)
                             STATS[url]['sleep_start'] = None
                             end = STATS[url]['sleep_end'] = None
-                            log.info('{}: {} is waking up! (yawn)'.format(now,
-                                                                          url))
+                            log.info('{}: {} is waking up! (yawn)'.format(now, url))
                     else:
                         # Check if the time falls between the normal
                         # sleep interval
@@ -110,15 +102,18 @@ def worker(url):
                                     end += datetime.timedelta(minutes=duration)
                                     # Does the time now fall between the sleep period?
                                     if DEBUG:
-                                        log.debug('{} <= {} <= {}'.format(start,
-                                                                          now,
-                                                                          end))
-                                        log.info('Sleeping: {}'.format(start <= now <= end))
-                                    if (start <= now <= end):
+                                        log.debug(
+                                            '{} <= {} <= {}'.format(start, now, end)
+                                        )
+                                        log.info(
+                                            'Sleeping: {}'.format(start <= now <= end)
+                                        )
+                                    if start <= now <= end:
                                         sleeping = True
-                                        updateStats(url, 'sleeping', start, end)
-                                        log.info('{}: {} is asleep! zzzzzz'.format(now,
-                                                                                   url))
+                                        update_stats(url, 'sleeping', start, end)
+                                        log.info(
+                                            '{}: {} is asleep! zzzzzz'.format(now, url)
+                                        )
                                         break
                                 except Exception as e:
                                     log.error('Error parsing sleep time!')
@@ -137,83 +132,121 @@ def worker(url):
                         try:
                             status_date = parser.parse(status.get('lastrun', None))
                         except Exception as e:
-                            updateStats(url, 'error', process=process, server=server)
+                            update_stats(url, 'error', process=process, server=server)
                             status_date = None
-                            send_messages('Error: Date Parse {} error for endpoint'
-                                          ' {}'.format(status.get('lastrun', None),
-                                                       url))
-                        if status_date and not (now - margin <= status_date <= now + margin):
+                            send_messages(
+                                'Error: Date Parse {} error for endpoint'
+                                ' {}'.format(status.get('lastrun', None), url)
+                            )
+                        if status_date and not (
+                            now - margin <= status_date <= now + margin
+                        ):
                             # This is a failure due to the age of the last status, report it.
                             # Also report the last known status, for good information.
-                            message = 'Error: {}/{} is outside of the acceptable {} ' \
-                                      'minute range. Last Run {} UTC with status {}' \
-                                .format(process,
-                                        server,
-                                        frequency,
-                                        status_date,
-                                        status_msg)
-                            updateStats(url, 'error', process=process, server=server)
+                            message = (
+                                'Error: {}/{} is outside of the acceptable {} '
+                                'minute range. Last Run {} UTC with status {}'.format(
+                                    process, server, frequency, status_date, status_msg
+                                )
+                            )
+                            update_stats(url, 'error', process=process, server=server)
                             send_messages(message)
-                        elif status_date and (now - margin <= status_date <= now + margin):
+                        elif status_date and (
+                            now - margin <= status_date <= now + margin
+                        ):
                             if status_msg != 'OK':
-                                message = 'Error: Failure reported on process {} running' \
-                                          ' on {}. Status: {} Error: {}.' \
-                                    .format(process, server, status_msg, reason)
-                                updateStats(url, 'error', process=process, server=server)
+                                message = (
+                                    'Error: Failure reported on process {} running'
+                                    ' on {}. Status: {} Error: {}.'.format(
+                                        process, server, status_msg, reason
+                                    )
+                                )
+                                update_stats(
+                                    url, 'error', process=process, server=server
+                                )
                                 send_messages(message)
                             else:
                                 # Everything is okay, but check if the last check
                                 # was a failure
                                 if STATS[url]['status'] == 'error':
-                                    message = 'Status: {}/{} ({}) is OK again!'\
-                                        .format(process,
-                                                server,
-                                                url)
+                                    message = 'Status: {}/{} ({}) is OK again!'.format(
+                                        process, server, url
+                                    )
                                     send_messages(message)
-                                updateStats(url, 'ok', process=process, server=server)
+                                update_stats(url, 'ok', process=process, server=server)
                         else:
                             # Something is wrong if no status_date exists
-                            message = 'Error: {}/{} is not configured properly {} '\
-                                .format(process, server, url)
-                            updateStats(url, 'error', process=process, server=server)
+                            message = 'Error: {}/{} is not configured properly {} '.format(
+                                process, server, url
+                            )
+                            update_stats(url, 'error', process=process, server=server)
                             send_messages(message)
-                        
 
+        except HTTPError as e:
+            # If we receive an HTML error, report it as an error
+            # https://docs.python.org/3/library/urllib.error.html#urllib.error.HTTPError
+            log.exception(e)
+            send_messages(
+                'Warn: HTTP Error: {} - Code {} - {}'.format(url, e.code, e.reason)
+            )
+            update_stats(url, 'error')
         except URLError as e:
             # If we receive an URL error, report it as an error
             # https://docs.python.org/3/library/urllib.error.html#urllib.error.URLError
             log.exception(e)
             send_messages('Warn: URLError: {} - {}'.format(url, e))
-            updateStats(url, 'error')
-        except HTTPError as e:
-            # If we receive an HTML error, report it as an error
-            # https://docs.python.org/3/library/urllib.error.html#urllib.error.HTTPError
-            log.exception(e)
-            send_messages('Warn: HTTP Error: {} - Code {} - {}'.format(url,
-                                                                      e.code,
-                                                                      e.reason))
-            updateStats(url, 'error')
+            update_stats(url, 'error')
         except SocketError as e:
             # If we receive a socket error, report it as a warning
             log.exception(e)
-            message = 'Warn: Problem retrieving {}. Will try again in a few minutes.'.format(url)
+            message = 'Warn: Problem retrieving {}. Will try again in a few minutes.'.format(
+                url
+            )
             send_messages(message)
-            updateStats(url, 'error')
+            update_stats(url, 'error')
 
         if STATS[url]['status'] == 'error':
             # Use the longer interval so as not to spam people with errors
-            log.warning('Sleeping {} for {} seconds'.format(url,
-                                                            ERRINTERVAL))
+            log.warning('Sleeping {} for {} seconds'.format(url, ERRINTERVAL))
             gevent.sleep(ERRINTERVAL)
         else:
             if DEBUG:
-                log.debug('Sleeping {} for {} seconds'.format(url,
-                                                              INTERVAL))
+                log.debug('Sleeping {} for {} seconds'.format(url, INTERVAL))
             # Everything is fine, use the normal interval
             gevent.sleep(INTERVAL)
 
 
-def updateStats(url='', status='', start=None, end=None, process=None, server=None):
+def set_token_auth(req):
+    settings = get_settings()
+    if settings.get('token_auth'):
+        auth_token = settings['token_auth'].get('token', '')
+        if not auth_token and settings['token_auth'].get('url'):
+            try:
+                auth_token = request_token()
+            except Exception as e:
+                log.error(e)
+        header = settings['token_auth'].get('header')
+        req.add_header(header, auth_token)
+
+
+def create_stats_per_url(url):
+    global STATS
+    # Store stats per URL
+    if not STATS.get(url):
+        STATS[url] = {
+            'pings': 0,
+            'errors': 0,
+            'status': '',
+            'sleep_start': None,
+            'sleep_end': None,
+            'server': None,
+            'process': None,
+        }
+    log.info('{}: Pinging {}'.format(datetime.datetime.utcnow(), url))
+    STATS[url]['pings'] = STATS[url]['pings'] + 1
+
+
+def update_stats(url='', status='', start=None, end=None, process=None, server=None):
     global STATS
     if status == 'error':
         STATS[url]['status'] = 'error'
@@ -264,8 +297,7 @@ def main():
 
     log.info('---- DEBUGGING {} ----'.format(DEBUG))
 
-    message = '{}\n Monitoring: {}\n'.format('\n'.join(urls),
-                                             settings['main']['debug'])
+    message = '{}\n Monitoring: {}\n'.format('\n'.join(urls), settings['main']['debug'])
     send_messages(message)
 
     # Start a small Flask webserver to gather results of the checks

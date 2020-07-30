@@ -1,6 +1,6 @@
 Flask==1.1.2
 gevent==20.6.2
 greenlet==0.4.16
-python-dateutil==2.7.3
+python-dateutil==2.8.1
 pytz==2018.4
 raven==6.9.0
